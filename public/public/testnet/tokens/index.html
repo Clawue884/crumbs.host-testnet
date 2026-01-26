@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Token Detail – Pi Testnet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body{font-family:system-ui;background:#0b1020;color:#e5e7eb;padding:14px}
+    .box{background:#020617;padding:14px;border-radius:10px}
+    .label{color:#9ca3af;font-size:12px}
+    a{color:#38bdf8;text-decoration:none}
+  </style>
+</head>
+<body>
+
+<h2>Token Detail (Pi Testnet)</h2>
+<div class="box" id="box">Loading…</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const asset = params.get("asset");
+const issuer = params.get("issuer");
+
+fetch("/testnet/data/tokens.json")
+  .then(r=>r.json())
+  .then(data=>{
+    const t = data.find(x=>x.asset_code===asset && x.issuer===issuer);
+    if(!t){
+      document.getElementById("box").innerText="Token tidak ditemukan";
+      return;
+    }
+    document.getElementById("box").innerHTML = `
+      <div><span class="label">Asset Code</span><br><b>${t.asset_code}</b></div><br>
+      <div><span class="label">Issuer</span><br>
+        <a href="https://testnet.explorer.minepi.com/account/${t.issuer}" target="_blank">
+          ${t.issuer}
+        </a>
+      </div><br>
+      <div><span class="label">Authorized Balances</span><br>${t.authorized_balances}</div><br>
+      <div><span class="label">Type</span><br>${t.is_nft_like ? "NFT-like" : "Token"}</div><br>
+      <div><span class="label">Last Ledger</span><br>${t.last_modified_ledger}</div><br>
+      <div><span class="label">External Explorer</span><br>
+        <a href="https://testnet.explorer.minepi.com/asset/${t.asset_code}:${t.issuer}" target="_blank">
+          Open in Pi Testnet Explorer
+        </a>
+      </div>
+    `;
+  });
+</script>
+
+</body>
+</html>
