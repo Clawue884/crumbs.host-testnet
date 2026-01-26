@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>crumbs.host/testnet – Pi Network Testnet Explorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: Arial, sans-serif; background:#0f172a; color:#e5e7eb; margin:0; }
+    header { padding:20px; background:#020617; border-bottom:1px solid #1e293b; }
+    h1 { margin:0 0 8px 0; }
+    .container { padding:20px; max-width:1200px; margin:auto; }
+    input, select { padding:6px; margin-right:6px; }
+    table { width:100%; border-collapse:collapse; margin-top:12px; }
+    th, td { border:1px solid #1e293b; padding:6px 8px; font-size:14px; }
+    th { background:#020617; cursor:pointer; }
+    tr:nth-child(even){ background:#020617; }
+    .badge { padding:2px 6px; border-radius:4px; font-size:12px; }
+    .nft { background:#7c2d12; }
+    .token { background:#064e3b; }
+    footer { padding:10px; text-align:center; font-size:12px; color:#9ca3af; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Pi Network Testnet – Token & Asset Explorer</h1>
+  <div>Unofficial • Read-only • Data from Horizon API</div>
+</header>
+
+<div class="container">
+  <div>
+    <input type="text" id="search" placeholder="Search asset code / issuer…" />
+    <select id="filter">
+      <option value="all">All</option>
+      <option value="token">Non-NFT</option>
+      <option value="nft">NFT-like</option>
+    </select>
+    <span id="stats"></span>
+  </div>
+
+  <table id="table">
+    <thead>
+      <tr>
+        <th>Asset Code</th>
+        <th>Issuer</th>
+        <th onclick="sortByBalances()">Authorized Balances ⬍</th>
+        <th>Type</th>
+        <th>Last Ledger</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="updated"></div>
+</div>
+
+<footer>
+  Testnet ≠ Mainnet • crumbs.host/testnet is an independent explorer
+</footer>
+
+<script>
+let assets = [];
+let sortDesc = true;
+
+fetch("../data/tokens.json")
+  .then(r => r.json())
+  .then(data => {
+    assets = data;
+    render();
+  });
+
+function render() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const f = document.getElementById("filter").value;
+  const tbody = document.querySelector("tbody");
+  tbody.innerHTML = "";
+
+  let filtered = assets.filter(a => {
+    const match =
+      a.asset_code?.toLowerCase().includes(q) ||
+      a.issuer?.toLowerCase().includes(q);
+    const type =
+      f === "all" ||
+      (f === "token" && !a.is_nft_like) ||
+      (f === "nft" && a.is_nft_like);
+    return match && type;
+  });
+
+  for (const a of filtered) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${a.asset_code}</td>
+      <td style="font-family:monospace">${a.issuer}</td>
+      <td>${a.authorized_balances}</td>
+      <td><span class="badge ${a.is_nft_like ? "nft" : "token"}">
+        ${a.is_nft_like ? "NFT-like" : "Token"}
+      </span></td>
+      <td>${a.last_modified_ledger}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  const tokens = assets.filter(a => !a.is_nft_like).length;
+  const nfts = assets.filter(a => a.is_nft_like).length;
+
+  document.getElementById("stats").innerText =
+    ` | Total: ${assets.length} | Tokens: ${tokens} | NFT-like: ${nfts}`;
+
+  document.getElementById("updated").innerText =
+    "Last updated: " + (assets[0]?.last_updated || "N/A");
+}
+
+function sortByBalances() {
+  assets.sort((a,b) =>
+    sortDesc
+      ? b.authorized_balances - a.authorized_balances
+      : a.authorized_balances - b.authorized_balances
+  );
+  sortDesc = !sortDesc;
+  render();
+}
+
+document.getElementById("search").oninput = render;
+document.getElementById("filter").onchange = render;
+</script>
+
+</body>
+</html>
