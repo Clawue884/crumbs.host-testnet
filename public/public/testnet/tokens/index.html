@@ -1,85 +1,203 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Token Detail – Pi Testnet</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>crumbs.host – Pi Network Explorer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body{font-family:system-ui;background:#0b1020;color:#e5e7eb;padding:14px}
-    .box{background:#020617;padding:14px;border-radius:10px}
-    .label{color:#9ca3af;font-size:12px}
-    a{color:#38bdf8;text-decoration:none}
-    button{background:#020617;color:#e5e7eb;border:1px solid #1e293b;padding:8px 12px;border-radius:8px}
-    .row{margin-bottom:10px}
-    .qr{margin-top:12px;text-align:center}
+    body { font-family: system-ui, Arial, sans-serif; background:#0b1020; color:#e5e7eb; margin:0; }
+    header { padding:20px; background:#020617; border-bottom:1px solid #1e293b; }
+    h1 { margin:0 0 6px 0; font-size:24px; }
+    .sub { font-size:13px; color:#9ca3af; }
+    .badge-net { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:bold; }
+    .testnet { background:#1e40af; }
+    .mainnet { background:#065f46; }
+
+    .container { padding:20px; max-width:1300px; margin:auto; }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+    input, select, button {
+      background:#020617; color:#e5e7eb; border:1px solid #1e293b;
+      padding:6px 10px; border-radius:6px;
+    }
+    button:hover { opacity:.9; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; margin-top:8px; }
+    th, td { border:1px solid #1e293b; padding:6px 8px; font-size:13px; }
+    th { background:#020617; position:sticky; top:0; }
+    tr:nth-child(even){ background:#020617; }
+    .badge { padding:2px 6px; border-radius:4px; font-size:11px; }
+    .nft { background:#7c2d12; }
+    .token { background:#064e3b; }
+    .footer { padding:12px; text-align:center; font-size:12px; color:#9ca3af; }
+    .pager { margin-top:10px; display:flex; gap:6px; align-items:center; }
+    a { color:#93c5fd; text-decoration:none; }
   </style>
 </head>
 <body>
 
-<h2>Token Detail (Pi Testnet)</h2>
-<div class="box" id="box">Loading…</div>
+<header>
+  <h1>
+    Pi Network Explorer
+    <span id="netBadge" class="badge-net"></span>
+  </h1>
+  <div class="sub" id="subtitle"></div>
+</header>
+
+<div class="container">
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search asset / issuer…" />
+    <select id="filter">
+      <option value="all">All</option>
+      <option value="token">Non-NFT</option>
+      <option value="nft">NFT-like</option>
+    </select>
+    <button onclick="sortByBalances()">Sort by Balances</button>
+    <a id="csvLink" href="#" download>
+      <button>Download CSV</button>
+    </a>
+    <span id="stats"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Asset Code</th>
+        <th>Issuer</th>
+        <th>Authorized Balances</th>
+        <th>Type</th>
+        <th>Last Ledger</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <div class="pager">
+    <button onclick="prevPage()">◀ Prev</button>
+    <span id="pageinfo"></span>
+    <button onclick="nextPage()">Next ▶</button>
+  </div>
+
+  <div id="updated"></div>
+</div>
+
+<div class="footer">
+  crumbs.host is an independent Pi Network explorer. Not affiliated with Pi Core Team.
+</div>
 
 <script>
-const params = new URLSearchParams(location.search);
-const asset = params.get("asset");
-const issuer = params.get("issuer");
-const shareUrl = location.href;
+let assets = [];
+let sortDesc = true;
+let page = 1;
+const PAGE_SIZE = 25;
 
-fetch("/testnet/data/tokens.json")
-  .then(r=>r.json())
-  .then(data=>{
-    const t = data.find(x=>x.asset_code===asset && x.issuer===issuer);
-    if(!t){
-      document.getElementById("box").innerText="Token tidak ditemukan";
-      return;
-    }
-    document.getElementById("box").innerHTML = `
-      <div class="row"><span class="label">Asset Code</span><br><b>${t.asset_code}</b></div>
-      <div class="row"><span class="label">Issuer</span><br>
-        <a href="https://testnet.explorer.minepi.com/account/${t.issuer}" target="_blank">
-          ${t.issuer}
-        </a>
-      </div>
-      <div class="row"><span class="label">Authorized Balances</span><br>${t.authorized_balances}</div>
-      <div class="row"><span class="label">Type</span><br>${t.is_nft_like ? "NFT-like" : "Token"}</div>
-      <div class="row"><span class="label">Last Ledger</span><br>${t.last_modified_ledger}</div>
+// ==== NETWORK SWITCH ====
+const params = new URLSearchParams(window.location.search);
+const network = params.get("net") || "testnet"; // testnet | mainnet
 
-      <div class="row">
-        <button onclick="shareLink()">📤 Share Link</button>
-        <button onclick="copyLink()">📋 Copy Link</button>
-      </div>
+document.getElementById("netBadge").innerText = network.toUpperCase();
+document.getElementById("netBadge").classList.add(network);
+document.getElementById("subtitle").innerText =
+  network === "mainnet"
+    ? "Unofficial • Read-only • Data from Pi Mainnet Horizon API"
+    : "Unofficial • Read-only • Data from Pi Testnet Horizon API";
 
-      <div class="qr">
-        <div class="label">QR Code</div>
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}">
-      </div>
+// === PATH DATA (TINGGAL SESUAIKAN FOLDER DI SERVER) ===
+const dataUrl = network === "mainnet"
+  ? "../data/mainnet/tokens.json"
+  : "../data/testnet/tokens.json";
 
-      <div class="row">
-        <span class="label">External Explorer</span><br>
-        <a href="https://testnet.explorer.minepi.com/asset/${t.asset_code}:${t.issuer}" target="_blank">
-          Open in Pi Testnet Explorer
-        </a>
-      </div>
-    `;
+const csvUrl = network === "mainnet"
+  ? "../data/mainnet/tokens.csv"
+  : "../data/testnet/tokens.csv";
+
+document.getElementById("csvLink").href = csvUrl;
+
+// ==== LOAD DATA ====
+fetch(dataUrl)
+  .then(r => r.json())
+  .then(data => {
+    assets = data;
+    render();
+  })
+  .catch(err => {
+    document.getElementById("updated").innerText =
+      "Failed to load data: " + err;
   });
 
-function shareLink(){
-  if(navigator.share){
-    navigator.share({
-      title: "Pi Testnet Token",
-      text: "Lihat token ini di crumbs.host/testnet",
-      url: shareUrl
-    });
-  }else{
-    alert("Browser tidak mendukung share, gunakan Copy Link.");
+function filtered() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const f = document.getElementById("filter").value;
+  return assets.filter(a => {
+    const match =
+      a.asset_code?.toLowerCase().includes(q) ||
+      a.issuer?.toLowerCase().includes(q);
+    const type =
+      f === "all" ||
+      (f === "token" && !a.is_nft_like) ||
+      (f === "nft" && a.is_nft_like);
+    return match && type;
+  });
+}
+
+function render() {
+  const data = filtered();
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+
+  const start = (page-1)*PAGE_SIZE;
+  const rows = data.slice(start, start+PAGE_SIZE);
+
+  for (const a of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${a.asset_code || ""}</td>
+      <td style="font-family:monospace">${a.issuer || ""}</td>
+      <td>${a.authorized_balances || 0}</td>
+      <td><span class="badge ${a.is_nft_like ? "nft" : "token"}">
+        ${a.is_nft_like ? "NFT-like" : "Token"}
+      </span></td>
+      <td>${a.last_modified_ledger || ""}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  const tokens = assets.filter(a => !a.is_nft_like).length;
+  const nfts = assets.filter(a => a.is_nft_like).length;
+
+  document.getElementById("stats").innerText =
+    `Total: ${assets.length} | Tokens: ${tokens} | NFT-like: ${nfts}`;
+
+  document.getElementById("pageinfo").innerText =
+    `Page ${page} / ${Math.ceil(data.length / PAGE_SIZE)}`;
+
+  document.getElementById("updated").innerText =
+    "Last updated: " + (assets[0]?.last_updated || "N/A");
+}
+
+function sortByBalances() {
+  assets.sort((a,b) =>
+    sortDesc
+      ? (b.authorized_balances||0) - (a.authorized_balances||0)
+      : (a.authorized_balances||0) - (b.authorized_balances||0)
+  );
+  sortDesc = !sortDesc;
+  page = 1;
+  render();
+}
+
+function nextPage() {
+  if (page < Math.ceil(filtered().length / PAGE_SIZE)) {
+    page++;
+    render();
   }
 }
-
-function copyLink(){
-  navigator.clipboard.writeText(shareUrl).then(()=>{
-    alert("Link berhasil di-copy!");
-  });
+function prevPage() {
+  if (page > 1) page--;
+  render();
 }
+
+document.getElementById("search").oninput = () => { page=1; render(); };
+document.getElementById("filter").onchange = () => { page=1; render(); };
 </script>
 
 </body>
