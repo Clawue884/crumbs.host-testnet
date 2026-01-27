@@ -53,6 +53,8 @@
 
   <div class="box" id="walletBox"></div>
   <div class="box" id="txBox"></div>
+  <div class="box" id="ledgerBox"></div>
+  <div class="box" id="networkBox"></div>
 </div>
 
 <div class="footer">
@@ -70,7 +72,7 @@ updateNetworkBadge();
 
 if (address) {
   document.getElementById("addrInput").value = address;
-  loadWallet(address);
+  loadAll(address);
 }
 
 document.getElementById("networkSelect").addEventListener("change", () => {
@@ -98,8 +100,8 @@ function go() {
   address = a;
   window.history.replaceState(null, null, `?net=${network}&addr=${address}`);
   if (refreshInterval) clearInterval(refreshInterval);
-  loadWallet(address);
-  refreshInterval = setInterval(() => loadWallet(address), 3000); // refresh tiap 3 detik
+  loadAll(address);
+  refreshInterval = setInterval(() => loadAll(address), 3000); // refresh tiap 3 detik
 }
 
 function getApiUrl() {
@@ -110,52 +112,72 @@ function getApiUrl() {
   }
 }
 
-function loadWallet(addr) {
+// === Load Wallet, Transactions, Ledger, Network Stats ===
+function loadAll(addr){
   const API = getApiUrl();
+
+  // --- Wallet ---
   fetch(`${API}/accounts/${addr}`)
-    .then(r => r.json())
-    .then(acc => {
+    .then(r=>r.json())
+    .then(acc=>{
       document.getElementById("walletBox").innerHTML = `
         <b>Wallet</b><br/>
         <span class="mono">${addr}</span><br/><br/>
         Sequence: ${acc.sequence}<br/>
         Subentries: ${acc.subentry_count}<br/>
         Balances:<br/>
-        <ul>
-          ${acc.balances.map(b => `<li>${b.balance} ${b.asset_code || "PI"}</li>`).join("")}
-        </ul>
+        <ul>${acc.balances.map(b=>`<li>${b.balance} ${b.asset_code||"PI"}</li>`).join("")}</ul>
       `;
-    })
-    .catch(() => { document.getElementById("walletBox").innerText = "Wallet not found / API error."; });
+    }).catch(()=>{ document.getElementById("walletBox").innerText="Wallet not found / API error."; });
 
+  // --- Transactions ---
   fetch(`${API}/accounts/${addr}/transactions?order=desc&limit=10`)
-    .then(r => r.json())
-    .then(tx => {
-      const rows = tx._embedded.records.map(t => `
+    .then(r=>r.json())
+    .then(tx=>{
+      const rows = tx._embedded.records.map(t=>`
         <tr>
           <td class="mono">${t.hash}</td>
           <td>${t.ledger}</td>
           <td>${new Date(t.created_at).toLocaleString()}</td>
-        </tr>
-      `).join("");
+        </tr>`).join("");
       document.getElementById("txBox").innerHTML = `
         <b>Latest Transactions</b>
         <table>
-          <thead>
-            <tr>
-              <th>Hash</th>
-              <th>Ledger</th>
-              <th>Time</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Hash</th><th>Ledger</th><th>Time</th></tr></thead>
           <tbody>${rows}</tbody>
-        </table>
-      `;
+        </table>`;
     }).catch(()=>{ document.getElementById("txBox").innerText="No transactions / API error"; });
+
+  // --- Latest Ledger ---
+  fetch(`${API}/ledgers?order=desc&limit=1`)
+    .then(r=>r.json())
+    .then(ledgers=>{
+      const l = ledgers._embedded.records[0];
+      document.getElementById("ledgerBox").innerHTML = `
+        <b>Latest Ledger</b><br/>
+        Ledger: ${l.sequence}<br/>
+        Closed at: ${new Date(l.closed_at).toLocaleString()}<br/>
+        Total operations: ${l.operation_count}
+      `;
+    }).catch(()=>{ document.getElementById("ledgerBox").innerText="Ledger data not available"; });
+
+  // --- Network Stats ---
+  fetch(`${API}/network`) // asumsi endpoint tersedia
+    .then(r=>r.json())
+    .then(net=>{
+      document.getElementById("networkBox").innerHTML = `
+        <b>Network Metrics</b><br/>
+        Total Migrated Mining Rewards: ${net.total_migrated_rewards} PI<br/>
+        Locked Rewards: ${net.locked_rewards} PI<br/>
+        Unlocked Rewards: ${net.unlocked_rewards} PI<br/>
+        Circulating Supply: ${net.circulating_supply} PI<br/>
+        Max Supply: ${net.max_supply} PI
+      `;
+    }).catch(()=>{ document.getElementById("networkBox").innerText="Network metrics not available"; });
 }
 
 // Auto-start refresh jika ada address
-if(address) refreshInterval = setInterval(() => loadWallet(address), 3000);
+if(address) refreshInterval = setInterval(() => loadAll(address), 3000);
 </script>
 
 </body>
