@@ -1,81 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>crumbs.host – Pi Wallet Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; background:#0b1020; color:#e5e7eb; margin:0; }
-    header { padding:20px; background:#020617; border-bottom:1px solid #1e293b; }
-    h1 { margin:0 0 6px 0; font-size:24px; }
-    .sub { font-size:13px; color:#9ca3af; }
-    .badge-net { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:bold; }
-    .testnet { background:#1e40af; }
-    .mainnet { background:#065f46; }
+<meta charset="UTF-8">
+<title>Pi Wallet Tracker – Realtime</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { font-family: system-ui, Arial, sans-serif; background:#0b1020; color:#e5e7eb; margin:0; }
+  header { padding:20px; background:#020617; border-bottom:1px solid #1e293b; }
+  h1 { margin:0 0 6px 0; font-size:24px; }
+  .sub { font-size:13px; color:#9ca3af; }
+  .badge-net { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:bold; }
+  .testnet { background:#1e40af; }
+  .mainnet { background:#065f46; }
+  .testnet3 { background:#b45309; }
 
-    .container { padding:20px; max-width:1200px; margin:auto; }
-    .box { background:#020617; border:1px solid #1e293b; border-radius:10px; padding:12px; margin-bottom:14px; }
-    .mono { font-family:monospace; font-size:13px; }
-    table { width:100%; border-collapse:collapse; margin-top:8px; }
-    th, td { border:1px solid #1e293b; padding:6px 8px; font-size:13px; }
-    th { background:#020617; position:sticky; top:0; }
-    tr:nth-child(even){ background:#020617; }
-    .footer { padding:12px; text-align:center; font-size:12px; color:#9ca3af; }
-    input, button {
-      background:#020617; color:#e5e7eb; border:1px solid #1e293b;
-      padding:6px 10px; border-radius:6px;
-    }
-    button:hover { opacity:.9; cursor:pointer; }
-    a { color:#93c5fd; text-decoration:none; }
-  </style>
+  .container { padding:20px; max-width:1200px; margin:auto; }
+  .box { background:#020617; border:1px solid #1e293b; border-radius:10px; padding:12px; margin-bottom:14px; }
+  .mono { font-family:monospace; font-size:13px; }
+  table { width:100%; border-collapse:collapse; margin-top:8px; }
+  th, td { border:1px solid #1e293b; padding:6px 8px; font-size:13px; }
+  th { background:#020617; position:sticky; top:0; }
+  tr:nth-child(even){ background:#020617; }
+  .footer { padding:12px; text-align:center; font-size:12px; color:#9ca3af; }
+  input, button, select {
+    background:#020617; color:#e5e7eb; border:1px solid #1e293b;
+    padding:6px 10px; border-radius:6px;
+  }
+  button:hover { opacity:.9; cursor:pointer; }
+  a { color:#93c5fd; text-decoration:none; }
+</style>
 </head>
 <body>
 
 <header>
   <h1>
-    Pi Wallet Tracker
+    Pi Wallet Tracker Realtime
     <span id="netBadge" class="badge-net"></span>
   </h1>
   <div class="sub" id="subtitle"></div>
 </header>
 
 <div class="container">
-
   <div class="box">
-    <input id="addrInput" class="mono" style="width:70%" placeholder="Paste Pi / Stellar Address (G...)" />
+    <select id="networkSelect">
+      <option value="testnet">Testnet</option>
+      <option value="testnet3">Testnet3</option>
+      <option value="mainnet">Mainnet</option>
+    </select>
+    <input id="addrInput" class="mono" style="width:55%" placeholder="Paste Pi / Stellar Address (G...)" />
     <button onclick="go()">Track</button>
   </div>
 
   <div class="box" id="walletBox"></div>
   <div class="box" id="txBox"></div>
-
 </div>
 
 <div class="footer">
-  crumbs.host is an independent Pi Network explorer. Not affiliated with Pi Core Team.
+  crumbs.host – independent Pi Network explorer. Not affiliated with Pi Core Team.
 </div>
 
 <script>
-// ==== NETWORK SWITCH ====
+let refreshInterval;
 const params = new URLSearchParams(window.location.search);
-const network = params.get("net") || "testnet"; // testnet | mainnet
-const address = params.get("addr") || "";
+let network = params.get("net") || "testnet";
+let address = params.get("addr") || "";
 
-document.getElementById("netBadge").innerText = network.toUpperCase();
-document.getElementById("netBadge").classList.add(network);
-document.getElementById("subtitle").innerText =
-  network === "mainnet"
-    ? "Read-only • Data from Pi Mainnet Horizon API"
-    : "Read-only • Data from Pi Testnet Horizon API";
-
-// ==== API ENDPOINT ====
-const API = network === "mainnet"
-  ? "https://api.mainnet.minepi.com"
-  : "https://api.testnet.minepi.com";
+document.getElementById("networkSelect").value = network;
+updateNetworkBadge();
 
 if (address) {
   document.getElementById("addrInput").value = address;
   loadWallet(address);
+}
+
+document.getElementById("networkSelect").addEventListener("change", () => {
+  network = document.getElementById("networkSelect").value;
+  updateNetworkBadge();
+  if (document.getElementById("addrInput").value) go();
+});
+
+function updateNetworkBadge() {
+  const badge = document.getElementById("netBadge");
+  badge.innerText = network.toUpperCase();
+  badge.className = "badge-net " + network;
+  document.getElementById("subtitle").innerText =
+    network === "mainnet" ? "Data from Pi Mainnet Horizon API"
+    : network === "testnet3" ? "Data from Pi Testnet3 Horizon API"
+    : "Data from Pi Testnet Horizon API";
 }
 
 function go() {
@@ -84,11 +95,23 @@ function go() {
     alert("Alamat tidak valid. Harus diawali G dan 56 karakter.");
     return;
   }
-  const url = `?net=${network}&addr=${a}`;
-  window.location = url;
+  address = a;
+  window.history.replaceState(null, null, `?net=${network}&addr=${address}`);
+  if (refreshInterval) clearInterval(refreshInterval);
+  loadWallet(address);
+  refreshInterval = setInterval(() => loadWallet(address), 3000); // refresh tiap 3 detik
+}
+
+function getApiUrl() {
+  switch(network){
+    case "mainnet": return "https://api.mainnet.minepi.com";
+    case "testnet3": return "https://testnet3.minepi.com";
+    default: return "https://api.testnet.minepi.com";
+  }
 }
 
 function loadWallet(addr) {
+  const API = getApiUrl();
   fetch(`${API}/accounts/${addr}`)
     .then(r => r.json())
     .then(acc => {
@@ -103,9 +126,7 @@ function loadWallet(addr) {
         </ul>
       `;
     })
-    .catch(() => {
-      document.getElementById("walletBox").innerText = "Wallet not found / API error.";
-    });
+    .catch(() => { document.getElementById("walletBox").innerText = "Wallet not found / API error."; });
 
   fetch(`${API}/accounts/${addr}/transactions?order=desc&limit=10`)
     .then(r => r.json())
@@ -117,7 +138,6 @@ function loadWallet(addr) {
           <td>${new Date(t.created_at).toLocaleString()}</td>
         </tr>
       `).join("");
-
       document.getElementById("txBox").innerHTML = `
         <b>Latest Transactions</b>
         <table>
@@ -131,8 +151,11 @@ function loadWallet(addr) {
           <tbody>${rows}</tbody>
         </table>
       `;
-    });
+    }).catch(()=>{ document.getElementById("txBox").innerText="No transactions / API error"; });
 }
+
+// Auto-start refresh jika ada address
+if(address) refreshInterval = setInterval(() => loadWallet(address), 3000);
 </script>
 
 </body>
