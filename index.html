@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>CORE+++++++ | Pi Network Heatmap Monitor</title>
+<title>CRUMBS.HOST – CORE+++++++ | Pi Network Ultra Monitor</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
+<!-- ===== Navbar ===== -->
 <nav>
   <a href="index.html">CORE++++</a>
   <a href="omega-console.html">Omega</a>
@@ -18,19 +19,43 @@
   <a href="pools-radar.html">Pools</a>
 </nav>
 
-<header><h1>🚀 CRUMBS.HOST – CORE+++++++ HEATMAP</h1></header>
+<header><h1>🚀 CRUMBS.HOST – CORE+++++++</h1></header>
 
-<div class="panel fade">
-  <h2>🌐 Network Status + AI Score</h2>
+<!-- ===== Status Panel ===== -->
+<div class="panel fade" id="statusPanel">
+  <h2>🌐 Network Status</h2>
   <div id="status-box">Loading...</div>
   <div id="aiScore"></div>
 </div>
 
+<!-- ===== Ledger / dApps / DEX Chart ===== -->
 <div class="panel fade">
-  <h2>📊 dApps & DEX Heatmap</h2>
-  <table class="heatmap">
-    <thead><tr><th>dApp / Pair</th><th>Activity / Volume</th></tr></thead>
-    <tbody id="heatmapBody"></tbody>
+  <h2>📊 Ledger / dApps / DEX Activity</h2>
+  <canvas id="txChart" height="150"></canvas>
+</div>
+
+<!-- ===== Asset List ===== -->
+<div class="panel fade">
+  <h2>🪙 Token / Asset List</h2>
+  <table>
+    <thead><tr><th>Asset</th><th>Issuer</th><th>Accounts</th></tr></thead>
+    <tbody id="assetTable"></tbody>
+  </table>
+</div>
+
+<!-- ===== dApps Radar ===== -->
+<div class="panel fade">
+  <h2>📱 Pi dApps Radar</h2>
+  <input id="appSearch" placeholder="Cari dApp..." style="width:100%" onkeyup="filterApps()">
+  <ul id="appList"></ul>
+</div>
+
+<!-- ===== DEX / Liquidity Monitor ===== -->
+<div class="panel fade">
+  <h2>💱 DEX / Liquidity Monitor</h2>
+  <table>
+    <thead><tr><th>Pair</th><th>Price</th><th>Volume</th></tr></thead>
+    <tbody id="dexTable"></tbody>
   </table>
 </div>
 
@@ -40,10 +65,10 @@
 const PI_HORIZON="https://api.testnet.minepi.com";
 let lastTxCount=0;
 
-// Notifications
+// Push Notification
 if("Notification" in window) Notification.requestPermission();
 
-// Neon popup
+// Neon Popup Alert
 function showAlert(msg){
   const div=document.createElement("div");
   div.className="alert-popup";
@@ -52,20 +77,23 @@ function showAlert(msg){
   setTimeout(()=>div.remove(),3000);
 }
 
-// Network Status + AI
-async function loadStatus(){
+// Network Status + AI Score + Alert
+async function loadNetworkStatus(){
   try{
     const res=await fetch(`${PI_HORIZON}/ledgers?order=desc&limit=5`);
     const data=await res.json();
-    const latest=data._embedded.records[0];
+    const ledgers=data._embedded.records;
+    const latest=ledgers[0];
+
     document.getElementById("status-box").innerHTML=`
-      <p>Ledger: ${latest.sequence}</p>
+      <p>Latest Ledger: ${latest.sequence}</p>
       <p>Closed At: ${latest.closed_at}</p>
       <p>Total TX: ${latest.successful_transaction_count}</p>
       <p>Status: <span style="color:#00ff6a">ONLINE</span></p>
     `;
-    const avgTx=(data._embedded.records.reduce((sum,l)=>sum+l.successful_transaction_count,0)/5).toFixed(2);
-    document.getElementById("aiScore").innerHTML=`<p>🤖 AI Score: ${avgTx}</p>`;
+
+    const avgTx=(ledgers.reduce((sum,l)=>sum+l.successful_transaction_count,0)/5).toFixed(2);
+    document.getElementById("aiScore").innerHTML=`<p>🤖 AI Score (Predicted Activity): ${avgTx}</p>`;
 
     if(lastTxCount && latest.successful_transaction_count>lastTxCount*1.5){
       showAlert(`⚡ TX Spike! Ledger ${latest.sequence}: ${latest.successful_transaction_count} TX`);
@@ -77,36 +105,96 @@ async function loadStatus(){
       }
     }
     lastTxCount=latest.successful_transaction_count;
-  }catch{document.getElementById("status-box").innerHTML=`<p>Status: <span style="color:red">OFFLINE</span></p>`;}
+  }catch{ document.getElementById("status-box").innerHTML=`<p>Status: <span style="color:red">OFFLINE</span></p>`; }
 }
 
-// Heatmap dApps + DEX
-const heatItems=[
-  {name:"Pi Browser", type:"dApp", value:0},
-  {name:"Pi NFT Hub", type:"dApp", value:0},
-  {name:"Pi DeFi Swap", type:"dApp", value:0},
-  {name:"PI/USDT", type:"DEX", value:0},
-  {name:"PI/USDC", type:"DEX", value:0}
+// TX + dApps + DEX Chart
+let txChart;
+async function loadCharts(){
+  const resLedger=await fetch(`${PI_HORIZON}/ledgers?order=desc&limit=10`);
+  const dataLedger=await resLedger.json();
+  const records=dataLedger._embedded.records.reverse();
+  const labels=records.map(l=>l.sequence);
+  const txValues=records.map(l=>l.successful_transaction_count);
+  const dappsValues=records.map(()=>Math.floor(Math.random()*10)+1);
+  const dexValues=records.map(()=>Math.floor(Math.random()*20)+10);
+
+  if(!txChart){
+    const ctx=document.getElementById("txChart").getContext("2d");
+    txChart=new Chart(ctx,{
+      type:"line",
+      data:{
+        labels,
+        datasets:[
+          {label:"TX per Ledger", data:txValues, borderColor:"#00ff6a", fill:false},
+          {label:"dApps Activity", data:dappsValues, borderColor:"#ff00ff", fill:false},
+          {label:"DEX Volume", data:dexValues, borderColor:"#00ffff", fill:false}
+        ]
+      },
+      options:{responsive:true}
+    });
+  }else{
+    txChart.data.labels=labels;
+    txChart.data.datasets[0].data=txValues;
+    txChart.data.datasets[1].data=dappsValues;
+    txChart.data.datasets[2].data=dexValues;
+    txChart.update();
+  }
+}
+
+// Asset List
+async function loadAssets(){
+  const res=await fetch(`${PI_HORIZON}/assets?limit=20`);
+  const data=await res.json();
+  document.getElementById("assetTable").innerHTML=
+    data._embedded.records.map(a=>`<tr><td>${a.asset_code}</td><td>${a.asset_issuer.slice(0,6)}...</td><td>${a.num_accounts}</td></tr>`).join("");
+}
+
+// dApps Radar
+const piApps=[
+  {name:"Pi Browser", url:"https://minepi.com", category:"Core"},
+  {name:"Pi Chain Mall", url:"#", category:"Marketplace"},
+  {name:"Pi NFT Hub", url:"#", category:"NFT"},
+  {name:"Pi DeFi Swap", url:"#", category:"DeFi"}
 ];
-function updateHeatmap(){
-  heatItems.forEach(item=>item.value=Math.floor(Math.random()*100)); // random demo
-  let html="";
-  heatItems.forEach(item=>{
-    let cls="low";
-    if(item.value>30) cls="medium";
-    if(item.value>70) cls="high";
-    html+=`<tr class="${cls}"><td>${item.name}</td><td>${item.value}</td></tr>`;
-  });
-  document.getElementById("heatmapBody").innerHTML=html;
+function loadApps(){
+  document.getElementById("appList").innerHTML=
+    piApps.map(a=>`<li>🔹 <b>${a.name}</b> (${a.category})<br><a href="${a.url}" target="_blank">${a.url}</a></li>`).join("");
+}
+function filterApps(){
+  const q=document.getElementById("appSearch").value.toLowerCase();
+  document.getElementById("appList").innerHTML=
+    piApps.filter(a=>a.name.toLowerCase().includes(q))
+      .map(a=>`<li>🔹 <b>${a.name}</b> (${a.category})</li>`).join("");
 }
 
-// Init + auto-refresh
+// DEX Multi-Pair
+async function loadDex(){
+  try{
+    const pairs=[
+      {code:"PI/USDT", url:"https://horizon-testnet.stellar.org/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=USDT&buying_asset_issuer=GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"},
+      {code:"PI/USDC", url:"https://horizon-testnet.stellar.org/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=USDC&buying_asset_issuer=GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF"}
+    ];
+    let html="";
+    for(const p of pairs){
+      const res=await fetch(p.url);
+      const data=await res.json();
+      html+=`<tr><td>${p.code}</td><td>${data.bids?.[0]?.price||"N/A"}</td><td>${data.bids?.[0]?.amount||"N/A"}</td></tr>`;
+    }
+    document.getElementById("dexTable").innerHTML=html;
+  }catch{ document.getElementById("dexTable").innerHTML=`<tr><td colspan="3">DEX data unavailable</td></tr>`; }
+}
+
+// Init + Auto-refresh
 function init(){
-  loadStatus();
-  updateHeatmap();
+  loadNetworkStatus();
+  loadCharts();
+  loadAssets();
+  loadApps();
+  loadDex();
 }
 init();
-setInterval(init,15000);
+setInterval(init,20000);
 </script>
 </body>
 </html>
