@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🪐 COSMIC CORE — Pi Network Cyber Console</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<style>
+body{margin:0;background:black;color:#0ff;font-family:monospace;overflow:hidden}
+#hud{position:fixed;top:10px;left:10px;z-index:10}
+.card{border:1px solid #0ff;padding:10px;margin:5px;background:rgba(0,0,0,.6)}
+button{background:#0ff;color:black;border:none;padding:6px 12px;margin-top:6px;cursor:pointer}
+input{background:black;color:#0ff;border:1px solid #0ff;padding:5px}
+#log{height:150px;overflow:auto;font-size:12px}
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="card">🪐 COSMIC CORE<br>Pi Network Cyber Console</div>
+  <div class="card">
+    Wallets:<br>
+    <input id="wallets" value="GBXHS6...,RQ4T7Z...,FQBDNL..." style="width:220px">
+    <button onclick="track()">Track</button>
+  </div>
+  <div class="card">
+    TX Log:
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+/* === 3D GLOBE === */
+const scene=new THREE.Scene()
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,1000)
+const renderer=new THREE.WebGLRenderer({antialias:true})
+renderer.setSize(innerWidth,innerHeight)
+document.body.appendChild(renderer.domElement)
+
+const globeGeo=new THREE.SphereGeometry(5,64,64)
+const globeMat=new THREE.MeshBasicMaterial({wireframe:true,color:0x00ffff})
+const globe=new THREE.Mesh(globeGeo,globeMat)
+scene.add(globe)
+
+const nodes=[]
+for(let i=0;i<200;i++){
+ let g=new THREE.SphereGeometry(0.05,6,6)
+ let m=new THREE.MeshBasicMaterial({color:0x00ffcc})
+ let n=new THREE.Mesh(g,m)
+ let phi=Math.random()*Math.PI*2
+ let theta=Math.random()*Math.PI
+ n.position.set(
+   5*Math.sin(theta)*Math.cos(phi),
+   5*Math.cos(theta),
+   5*Math.sin(theta)*Math.sin(phi)
+ )
+ nodes.push(n);scene.add(n)
+}
+
+camera.position.z=12
+
+function animate(){
+ requestAnimationFrame(animate)
+ globe.rotation.y+=0.001
+ nodes.forEach(n=>n.rotation.y+=0.01)
+ renderer.render(scene,camera)
+}
+animate()
+
+/* === REFAKE REALTIME TX STREAM === */
+const log=document.getElementById("log")
+function fakeTX(){
+ let tx="TX-"+Math.random().toString(36).slice(2,10)
+ let val=(Math.random()*1000).toFixed(2)
+ let alert = val>900?" ⚠️ ANOMALY!":""
+ let line=document.createElement("div")
+ line.textContent=`${tx} → ${val} Pi ${alert}`
+ log.prepend(line)
+ if(alert) new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play()
+}
+setInterval(fakeTX,1500)
+
+/* === MULTI WALLET TRACKER === */
+function track(){
+ log.prepend(Object.assign(document.createElement("div"),{
+  textContent:"🔍 Tracking wallets: "+wallets.value
+ }))
+}
+
+/* === AUTO THEME === */
+let dark=true
+setInterval(()=>{
+ dark=!dark
+ document.body.style.background=dark?"black":"#f5f5f5"
+ document.body.style.color=dark?"#0ff":"#111"
+},15000)
+
+window.onresize=()=>renderer.setSize(innerWidth,innerHeight)
+</script>
+
+</body>
+</html>
