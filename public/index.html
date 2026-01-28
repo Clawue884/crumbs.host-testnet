@@ -2,126 +2,279 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>crumbs.host/testnet – Pi Network Testnet Explorer</title>
+  <title>CRUMBS.HOST – CORE++++ | Pi Network Monitor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background:#0f172a; color:#e5e7eb; margin:0; }
-    header { padding:20px; background:#020617; border-bottom:1px solid #1e293b; }
-    h1 { margin:0 0 8px 0; }
-    .container { padding:20px; max-width:1200px; margin:auto; }
-    input, select { padding:6px; margin-right:6px; }
-    table { width:100%; border-collapse:collapse; margin-top:12px; }
-    th, td { border:1px solid #1e293b; padding:6px 8px; font-size:14px; }
-    th { background:#020617; cursor:pointer; }
-    tr:nth-child(even){ background:#020617; }
-    .badge { padding:2px 6px; border-radius:4px; font-size:12px; }
-    .nft { background:#7c2d12; }
-    .token { background:#064e3b; }
-    footer { padding:10px; text-align:center; font-size:12px; color:#9ca3af; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle at top, #050b1a, #02050f);
+      color: #00ffd5;
+    }
+    header {
+      text-align: center;
+      padding: 20px;
+      font-size: 26px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    .container {
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+    }
+    .panel {
+      background: rgba(0, 30, 40, 0.6);
+      border: 1px solid #00ffd5;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: 0 0 15px rgba(0,255,213,0.2);
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 18px;
+      border-bottom: 1px solid #00ffd5;
+      padding-bottom: 6px;
+    }
+    input, button {
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+      margin-top: 5px;
+    }
+    button {
+      background: #00ffd5;
+      color: #000;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid #00ffd5;
+      padding: 6px;
+      text-align: left;
+    }
+    ul { padding-left: 18px; }
+    footer {
+      text-align: center;
+      padding: 15px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+    a { color:#00ffd5; }
   </style>
 </head>
+
 <body>
+  <header>🚀 CRUMBS.HOST – CORE++++<br><small>Pi Network Testnet Monitor</small></header>
 
-<header>
-  <h1>Pi Network Testnet – Token & Asset Explorer</h1>
-  <div>Unofficial • Read-only • Data from Horizon API</div>
-</header>
+  <div class="container">
 
-<div class="container">
-  <div>
-    <input type="text" id="search" placeholder="Search asset code / issuer…" />
-    <select id="filter">
-      <option value="all">All</option>
-      <option value="token">Non-NFT</option>
-      <option value="nft">NFT-like</option>
-    </select>
-    <span id="stats"></span>
+    <!-- Network Status -->
+    <section class="panel">
+      <h2>🌐 Network Status</h2>
+      <div id="status-box">Loading...</div>
+    </section>
+
+    <!-- Wallet Tracker -->
+    <section class="panel">
+      <h2>👛 Wallet Tracker</h2>
+      <input id="walletInput" placeholder="Masukkan alamat wallet Pi" style="width:100%" />
+      <button onclick="trackWallet()">Track Wallet</button>
+      <div id="walletResult"></div>
+    </section>
+
+    <!-- TX Chart -->
+    <section class="panel">
+      <h2>📊 Aktivitas Transaksi</h2>
+      <canvas id="txChart" height="140"></canvas>
+    </section>
+
+    <!-- Token List -->
+    <section class="panel">
+      <h2>🪙 Token / Asset List</h2>
+      <table>
+        <thead>
+          <tr><th>Asset</th><th>Issuer</th><th>Accounts</th></tr>
+        </thead>
+        <tbody id="assetTable"></tbody>
+      </table>
+    </section>
+
+    <!-- dApps Radar -->
+    <section class="panel">
+      <h2>📱 Pi dApps Radar</h2>
+      <input id="appSearch" placeholder="Cari dApp..." style="width:100%" onkeyup="filterApps()">
+      <ul id="appList"></ul>
+    </section>
+
+    <!-- DEX Monitor -->
+    <section class="panel">
+      <h2>💱 DEX / Liquidity Monitor</h2>
+      <table>
+        <thead>
+          <tr><th>Pair</th><th>Price</th><th>Volume</th></tr>
+        </thead>
+        <tbody id="dexTable"></tbody>
+      </table>
+    </section>
+
   </div>
 
-  <table id="table">
-    <thead>
-      <tr>
-        <th>Asset Code</th>
-        <th>Issuer</th>
-        <th onclick="sortByBalances()">Authorized Balances ⬍</th>
-        <th>Type</th>
-        <th>Last Ledger</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <div id="updated"></div>
-</div>
-
-<footer>
-  Testnet ≠ Mainnet • crumbs.host/testnet is an independent explorer
-</footer>
+  <footer>
+    CORE++++ System • Pi Network Testnet • crumbs.host
+  </footer>
 
 <script>
-let assets = [];
-let sortDesc = true;
+const PI_HORIZON = "https://api.testnet.minepi.com";
 
-fetch("../data/tokens.json")
-  .then(r => r.json())
-  .then(data => {
-    assets = data;
-    render();
-  });
+// 🔹 Network Status
+async function loadNetworkStatus() {
+  try {
+    const res = await fetch(`${PI_HORIZON}/ledgers?order=desc&limit=1`);
+    const data = await res.json();
+    const ledger = data._embedded.records[0];
 
-function render() {
-  const q = document.getElementById("search").value.toLowerCase();
-  const f = document.getElementById("filter").value;
-  const tbody = document.querySelector("tbody");
-  tbody.innerHTML = "";
-
-  let filtered = assets.filter(a => {
-    const match =
-      a.asset_code?.toLowerCase().includes(q) ||
-      a.issuer?.toLowerCase().includes(q);
-    const type =
-      f === "all" ||
-      (f === "token" && !a.is_nft_like) ||
-      (f === "nft" && a.is_nft_like);
-    return match && type;
-  });
-
-  for (const a of filtered) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${a.asset_code}</td>
-      <td style="font-family:monospace">${a.issuer}</td>
-      <td>${a.authorized_balances}</td>
-      <td><span class="badge ${a.is_nft_like ? "nft" : "token"}">
-        ${a.is_nft_like ? "NFT-like" : "Token"}
-      </span></td>
-      <td>${a.last_modified_ledger}</td>
+    document.getElementById("status-box").innerHTML = `
+      <p><b>Latest Ledger:</b> ${ledger.sequence}</p>
+      <p><b>Closed At:</b> ${ledger.closed_at}</p>
+      <p><b>Total TX:</b> ${ledger.successful_transaction_count}</p>
+      <p><b>Status:</b> <span style="color:#00ff6a">ONLINE</span></p>
     `;
-    tbody.appendChild(tr);
+  } catch {
+    document.getElementById("status-box").innerHTML = `
+      <p>Status: <span style="color:red">OFFLINE</span></p>
+    `;
   }
-
-  const tokens = assets.filter(a => !a.is_nft_like).length;
-  const nfts = assets.filter(a => a.is_nft_like).length;
-
-  document.getElementById("stats").innerText =
-    ` | Total: ${assets.length} | Tokens: ${tokens} | NFT-like: ${nfts}`;
-
-  document.getElementById("updated").innerText =
-    "Last updated: " + (assets[0]?.last_updated || "N/A");
 }
 
-function sortByBalances() {
-  assets.sort((a,b) =>
-    sortDesc
-      ? b.authorized_balances - a.authorized_balances
-      : a.authorized_balances - b.authorized_balances
-  );
-  sortDesc = !sortDesc;
-  render();
+// 🔹 Wallet Tracker
+async function trackWallet() {
+  const addr = document.getElementById("walletInput").value.trim();
+  if (!addr) return alert("Masukkan alamat wallet!");
+
+  const res = await fetch(`${PI_HORIZON}/accounts/${addr}`);
+  const data = await res.json();
+
+  let balances = data.balances.map(b =>
+    `<li>${b.asset_code || "PI"} : ${b.balance}</li>`
+  ).join("");
+
+  document.getElementById("walletResult").innerHTML = `
+    <p><b>Account:</b> ${data.account_id}</p>
+    <ul>${balances}</ul>
+  `;
 }
 
-document.getElementById("search").oninput = render;
-document.getElementById("filter").onchange = render;
+// 🔹 TX Chart
+let txChart;
+async function loadTxChart() {
+  const res = await fetch(`${PI_HORIZON}/ledgers?order=desc&limit=10`);
+  const data = await res.json();
+  const records = data._embedded.records.reverse();
+
+  const labels = records.map(l => l.sequence);
+  const values = records.map(l => l.successful_transaction_count);
+
+  if (!txChart) {
+    const ctx = document.getElementById("txChart").getContext("2d");
+    txChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "TX per Ledger",
+          data: values,
+          borderWidth: 2
+        }]
+      },
+      options: { responsive: true }
+    });
+  } else {
+    txChart.data.labels = labels;
+    txChart.data.datasets[0].data = values;
+    txChart.update();
+  }
+}
+
+// 🔹 Asset List
+async function loadAssets() {
+  const res = await fetch(`${PI_HORIZON}/assets?limit=20`);
+  const data = await res.json();
+
+  const rows = data._embedded.records.map(a => `
+    <tr>
+      <td>${a.asset_code}</td>
+      <td>${a.asset_issuer.slice(0,6)}...</td>
+      <td>${a.num_accounts}</td>
+    </tr>
+  `).join("");
+
+  document.getElementById("assetTable").innerHTML = rows;
+}
+
+// 🔹 dApps Radar (Seed Data – bisa kamu update)
+const piApps = [
+  { name: "Pi Browser", url: "https://minepi.com", category: "Core" },
+  { name: "Pi Chain Mall", url: "#", category: "Marketplace" },
+  { name: "Pi NFT Hub", url: "#", category: "NFT" },
+  { name: "Pi DeFi Swap", url: "#", category: "DeFi" }
+];
+
+function loadApps() {
+  const list = document.getElementById("appList");
+  list.innerHTML = piApps.map(a => `
+    <li>🔹 <b>${a.name}</b> <small>(${a.category})</small>
+      <br><a href="${a.url}" target="_blank">${a.url}</a>
+    </li>
+  `).join("");
+}
+
+function filterApps() {
+  const q = document.getElementById("appSearch").value.toLowerCase();
+  document.getElementById("appList").innerHTML = piApps
+    .filter(a => a.name.toLowerCase().includes(q))
+    .map(a => `<li>🔹 <b>${a.name}</b> (${a.category})</li>`).join("");
+}
+
+// 🔹 DEX Monitor (Stellar Testnet Example)
+async function loadDex() {
+  try {
+    // NOTE: Ini contoh endpoint orderbook Stellar Testnet
+    // Kamu bisa ganti pair sesuai kebutuhan
+    const res = await fetch("https://horizon-testnet.stellar.org/order_book?selling_asset_type=native&buying_asset_type=credit_alphanum4&buying_asset_code=USDT&buying_asset_issuer=GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF");
+    const data = await res.json();
+
+    document.getElementById("dexTable").innerHTML = `
+      <tr>
+        <td>PI / USDT</td>
+        <td>${data.bids?.[0]?.price || "N/A"}</td>
+        <td>${data.bids?.[0]?.amount || "N/A"}</td>
+      </tr>
+    `;
+  } catch {
+    document.getElementById("dexTable").innerHTML = `
+      <tr><td colspan="3">DEX data unavailable</td></tr>
+    `;
+  }
+}
+
+// Init
+loadNetworkStatus();
+loadTxChart();
+loadAssets();
+loadApps();
+loadDex();
+
+setInterval(loadNetworkStatus, 15000);
+setInterval(loadTxChart, 20000);
+setInterval(loadDex, 30000);
 </script>
 
 </body>
