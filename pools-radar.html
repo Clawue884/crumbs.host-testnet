@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pi Network DEX Pools Radar — CORE+++</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+  margin:0; font-family:monospace;
+  background:#020617; color:#00f7ff;
+}
+header {
+  padding:15px; border-bottom:1px solid #00f7ff55;
+  background:black; position:sticky; top:0;
+}
+h1 { margin:0; font-size:20px; }
+input {
+  width:100%; padding:8px; margin-top:8px;
+  background:#000; border:1px solid #00f7ff55;
+  color:#0ff; border-radius:6px;
+}
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th, td {
+  border:1px solid #00f7ff22;
+  padding:6px; font-size:12px;
+}
+th { background:#000; position:sticky; top:85px; }
+tr:nth-child(even){ background:#010a12; }
+.footer {
+  text-align:center; padding:10px;
+  font-size:11px; color:#6ee7ff;
+}
+.neon { text-shadow:0 0 8px #0ff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="neon">🌊 Pi Network – DEX Pools Radar (CORE+++)</h1>
+  <input id="search" placeholder="Search Asset / Pool ID…" oninput="filterTable()" />
+</header>
+
+<table id="poolsTable">
+<thead>
+<tr>
+  <th>Pool</th>
+  <th>Asset A</th>
+  <th>Asset B</th>
+  <th>Shares</th>
+  <th>Created</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<div class="footer">
+  crumbs.host CORE+++ • Data from Pi Testnet Horizon DEX
+</div>
+
+<script>
+const API = "https://api.testnet.minepi.com";
+
+async function loadPools(){
+  const res = await fetch(API + "/liquidity_pools?limit=200&order=desc");
+  const data = await res.json();
+  const rows = data._embedded.records.map(p=>{
+    const a = p.reserves[0];
+    const b = p.reserves[1];
+    return `
+      <tr>
+        <td class="neon">${p.id.slice(0,10)}…</td>
+        <td>${a.asset_code || "PI"}<br>${Number(a.amount).toFixed(2)}</td>
+        <td>${b.asset_code || "PI"}<br>${Number(b.amount).toFixed(2)}</td>
+        <td>${Number(p.total_shares).toFixed(2)}</td>
+        <td>${new Date(p.last_modified_time).toLocaleDateString()}</td>
+      </tr>
+    `;
+  }).join("");
+
+  document.querySelector("#poolsTable tbody").innerHTML = rows;
+}
+
+function filterTable(){
+  const q = document.getElementById("search").value.toLowerCase();
+  document.querySelectorAll("#poolsTable tbody tr").forEach(tr=>{
+    tr.style.display = tr.innerText.toLowerCase().includes(q) ? "" : "none";
+  });
+}
+
+loadPools();
+setInterval(loadPools, 10000); // refresh tiap 10 detik
+</script>
+
+</body>
+</html>
