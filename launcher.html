@@ -1,51 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Pi Network CORE+++ Launcher</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin:0;
-      background:#050b12;
-      color:#0ff;
-      font-family:monospace;
-    }
-    h1 { text-align:center; margin:20px 0; }
-    .grid {
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
-      gap:15px;
-      padding:20px;
-    }
-    a {
-      text-decoration:none;
-      color:#0ff;
-      background:rgba(0,255,255,0.08);
-      border:1px solid #0ff;
-      padding:20px;
-      text-align:center;
-      border-radius:12px;
-      transition:.2s;
-    }
-    a:hover {
-      background:#0ff;
-      color:#000;
-      transform:scale(1.05);
-    }
-  </style>
+<meta charset="UTF-8">
+<title>CRUMBS.HOST – CORE+++ Launcher</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00f7ff">
+<style>
+body {
+  margin:0; font-family:system-ui;
+  background:radial-gradient(circle at top,#020617,#000);
+  color:#00f7ff; text-align:center;
+}
+h1 { margin:30px 0 10px; }
+.grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:15px; padding:20px;
+}
+.card {
+  background:#020617; border:1px solid #00f7ff55;
+  border-radius:12px; padding:20px;
+  box-shadow:0 0 20px #00f7ff33;
+  cursor:pointer; transition:.2s;
+}
+.card:hover { transform:scale(1.05); box-shadow:0 0 30px #00f7ff; }
+button {
+  margin:20px; padding:10px 20px;
+  border-radius:8px; border:1px solid #00f7ff;
+  background:black; color:#00f7ff;
+}
+</style>
 </head>
 <body>
 
-<h1>🧬 PI NETWORK — CORE+++ CONSOLE</h1>
+<h1>🚀 CRUMBS.HOST – CORE+++</h1>
+<p>Cyber Console Pi Network Launcher</p>
 
 <div class="grid">
-  <a href="omega-console.html">🔥 Omega Console</a>
-  <a href="cosmic-core.html">🪐 Cosmic Core</a>
-  <a href="god-ai-core.html">🧠 God AI Core</a>
-  <a href="quantum-sentinel.html">🛰 Quantum Sentinel</a>
-  <a href="public/wallet.html">💼 Wallet</a>
+  <div class="card" onclick="go('omega-console.html')">OMEGA CONSOLE</div>
+  <div class="card" onclick="go('cosmic-core.html')">COSMIC CORE</div>
+  <div class="card" onclick="go('god-ai-core.html')">GOD AI CORE</div>
+  <div class="card" onclick="go('quantum-sentinel.html')">QUANTUM SENTINEL</div>
+  <div class="card" onclick="go('public/wallet.html')">WALLET TRACKER</div>
 </div>
+
+<button id="installBtn" hidden>⬇️ Install App</button>
+
+<script>
+function go(p){ location.href=p; }
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').hidden=false;
+});
+
+document.getElementById('installBtn').onclick = async () => {
+  deferredPrompt.prompt();
+};
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
 
 </body>
 </html>
