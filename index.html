@@ -1,74 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>PI CYBER OS — CORE++++</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{margin:0;background:#000;color:#0ff;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh}
-.panel{border:1px solid #0ff;padding:20px;width:320px;text-align:center}
-input,button{width:100%;padding:8px;margin:6px;background:#000;color:#0ff;border:1px solid #0ff}
-.hidden{display:none}
-pre{white-space:pre-wrap;text-align:left;font-size:12px}
-</style>
+  <meta charset="UTF-8" />
+  <title>Pi Network Cyber Console — CORE+++</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="refresh" content="0; url=launcher.html">
 </head>
 <body>
-
-<div class="panel" id="login">
-  <h2>🔐 CORE++++ LOGIN</h2>
-  <input id="user" placeholder="User (admin / ops / view)">
-  <input id="pass" type="password" placeholder="Password">
-  <button onclick="login()">Send OTP</button>
-</div>
-
-<div class="panel hidden" id="otpBox">
-  <h2>🧬 Enter OTP</h2>
-  <input id="otp" placeholder="6-digit code">
-  <button onclick="verify()">Verify</button>
-</div>
-
-<div class="panel hidden" id="dash">
-  <h2>🧠 CORE++++ DASH</h2>
-  <pre id="info"></pre>
-  <button onclick="loadStatus()">Load Status</button>
-  <button onclick="logout()">Logout</button>
-</div>
-
-<script>
-const API="http://localhost:8000";
-let TOKEN="";
-
-function login(){
-  fetch(API+"/login",{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({user:user.value, pass:pass.value})
-  })
-  .then(r=>r.ok ? (login.classList.add("hidden"), otpBox.classList.remove("hidden")) : alert("Login failed"));
-}
-
-function verify(){
-  fetch(API+"/verify",{
-    method:"POST",
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({user:user.value, otp:otp.value})
-  })
-  .then(r=>r.json())
-  .then(d=>{
-    TOKEN=d.token;
-    otpBox.classList.add("hidden");
-    dash.classList.remove("hidden");
-  });
-}
-
-function loadStatus(){
-  fetch(API+"/api/status",{headers:{Authorization:"Bearer "+TOKEN}})
-  .then(r=>r.json())
-  .then(d=>info.textContent=JSON.stringify(d,null,2));
-}
-
-function logout(){ location.reload(); }
-</script>
-
+  <h2 style="color:#0ff;font-family:monospace;">
+    Loading Pi Network CORE+++ Console…
+  </h2>
 </body>
 </html>
