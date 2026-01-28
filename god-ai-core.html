@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🛸 GOD-AI CORE — Pi Network Omni Cyber Intelligence</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<style>
+body{margin:0;background:black;color:#0ff;font-family:monospace;overflow:hidden}
+#ui{position:fixed;top:10px;left:10px;z-index:10}
+.panel{border:1px solid #0ff;padding:10px;margin:5px;background:rgba(0,0,0,.7)}
+input,button{background:black;color:#0ff;border:1px solid #0ff;padding:5px}
+#log{height:160px;overflow:auto;font-size:12px}
+#threat{font-size:14px;color:#f00}
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <div class="panel">🛸 GOD-AI CORE<br>Omni Cyber Intelligence</div>
+  <div class="panel">
+    Wallet Radar:<br>
+    <input id="wallets" value="GBXHS6...,RQ4T7Z...,FQBDNL..." style="width:230px">
+    <button onclick="track()">Scan</button>
+  </div>
+  <div class="panel">
+    Threat Level: <span id="threat">LOW</span>
+  </div>
+  <div class="panel">TX Stream<div id="log"></div></div>
+</div>
+
+<script>
+/* === 3D GRID CORE === */
+const scene=new THREE.Scene()
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,1000)
+const renderer=new THREE.WebGLRenderer({antialias:true})
+renderer.setSize(innerWidth,innerHeight)
+document.body.appendChild(renderer.domElement)
+
+camera.position.z=14
+const grid=[]
+for(let i=0;i<300;i++){
+ let g=new THREE.SphereGeometry(0.04,6,6)
+ let m=new THREE.MeshBasicMaterial({color:0x00ffcc})
+ let n=new THREE.Mesh(g,m)
+ n.position.set((Math.random()-0.5)*10,(Math.random()-0.5)*10,(Math.random()-0.5)*10)
+ grid.push(n);scene.add(n)
+}
+
+function animate(){
+ requestAnimationFrame(animate)
+ grid.forEach(n=>{n.rotation.x+=0.01;n.rotation.y+=0.01})
+ renderer.render(scene,camera)
+}
+animate()
+
+/* === AI TX ENGINE (SIMULATED) === */
+const log=document.getElementById("log")
+const threat=document.getElementById("threat")
+function aiTX(){
+ let v=(Math.random()*1500).toFixed(2)
+ let flag=v>1100
+ let tx="TX-"+Math.random().toString(36).slice(2,10)
+ let d=document.createElement("div")
+ d.textContent=`${tx} → ${v} Pi ${flag?"⚠️ AI ALERT":""}`
+ log.prepend(d)
+ if(flag){
+   threat.textContent="HIGH"
+   threat.style.color="#f00"
+   new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play()
+ }else{
+   threat.textContent="LOW"
+   threat.style.color="#0f0"
+ }
+}
+setInterval(aiTX,1200)
+
+/* === WALLET RADAR === */
+function track(){
+ log.prepend(Object.assign(document.createElement("div"),{
+   textContent:"🛰️ Radar scanning wallets: "+wallets.value
+ }))
+}
+
+window.onresize=()=>renderer.setSize(innerWidth,innerHeight)
+</script>
+
+</body>
+</html>
