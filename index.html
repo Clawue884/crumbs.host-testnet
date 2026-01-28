@@ -1,15 +1,211 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Pi Network Cyber Console — CORE+++</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="refresh" content="0; url=launcher.html">
+  <title>CRUMBS.HOST – CORE+++ | Pi Network Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle at top, #050b1a, #02050f);
+      color: #00ffd5;
+    }
+    header {
+      text-align: center;
+      padding: 20px;
+      font-size: 26px;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    .container {
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+    }
+    .panel {
+      background: rgba(0, 30, 40, 0.6);
+      border: 1px solid #00ffd5;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: 0 0 15px rgba(0,255,213,0.2);
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 18px;
+      border-bottom: 1px solid #00ffd5;
+      padding-bottom: 6px;
+    }
+    input, button {
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+      margin-top: 5px;
+    }
+    button {
+      background: #00ffd5;
+      color: #000;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid #00ffd5;
+      padding: 6px;
+      text-align: left;
+    }
+    footer {
+      text-align: center;
+      padding: 15px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+  </style>
 </head>
-<body style="background:#000; display:flex; align-items:center; justify-content:center; height:100vh;">
-  <h2 style="color:#0ff;font-family:monospace;">
-    🚀 Loading Pi Network CORE+++ Console…
-  </h2>
+
+<body>
+  <header>🚀 CRUMBS.HOST – CORE+++<br><small>Pi Network Testnet Monitor</small></header>
+
+  <div class="container">
+
+    <!-- Network Status -->
+    <section class="panel">
+      <h2>🌐 Network Status</h2>
+      <div id="status-box">Loading...</div>
+    </section>
+
+    <!-- Wallet Tracker -->
+    <section class="panel">
+      <h2>👛 Wallet Tracker</h2>
+      <input id="walletInput" placeholder="Masukkan alamat wallet Pi" style="width:100%" />
+      <button onclick="trackWallet()">Track Wallet</button>
+      <div id="walletResult"></div>
+    </section>
+
+    <!-- TX Chart -->
+    <section class="panel">
+      <h2>📊 Aktivitas Transaksi</h2>
+      <canvas id="txChart" height="140"></canvas>
+    </section>
+
+    <!-- Token List -->
+    <section class="panel">
+      <h2>🪙 Token / Asset List</h2>
+      <table>
+        <thead>
+          <tr><th>Asset</th><th>Issuer</th><th>Accounts</th></tr>
+        </thead>
+        <tbody id="assetTable"></tbody>
+      </table>
+    </section>
+
+  </div>
+
+  <footer>
+    CORE+++ System • Pi Network Testnet • crumbs.host
+  </footer>
+
+<script>
+const PI_HORIZON = "https://api.testnet.minepi.com";
+
+// 🔹 Network Status
+async function loadNetworkStatus() {
+  try {
+    const res = await fetch(`${PI_HORIZON}/ledgers?order=desc&limit=1`);
+    const data = await res.json();
+    const ledger = data._embedded.records[0];
+
+    document.getElementById("status-box").innerHTML = `
+      <p><b>Latest Ledger:</b> ${ledger.sequence}</p>
+      <p><b>Closed At:</b> ${ledger.closed_at}</p>
+      <p><b>Total TX:</b> ${ledger.successful_transaction_count}</p>
+      <p><b>Status:</b> <span style="color:#00ff6a">ONLINE</span></p>
+    `;
+  } catch {
+    document.getElementById("status-box").innerHTML = `
+      <p>Status: <span style="color:red">OFFLINE</span></p>
+    `;
+  }
+}
+
+// 🔹 Wallet Tracker
+async function trackWallet() {
+  const addr = document.getElementById("walletInput").value.trim();
+  if (!addr) return alert("Masukkan alamat wallet!");
+
+  const res = await fetch(`${PI_HORIZON}/accounts/${addr}`);
+  const data = await res.json();
+
+  let balances = data.balances.map(b =>
+    `<li>${b.asset_code || "PI"} : ${b.balance}</li>`
+  ).join("");
+
+  document.getElementById("walletResult").innerHTML = `
+    <p><b>Account:</b> ${data.account_id}</p>
+    <ul>${balances}</ul>
+  `;
+}
+
+// 🔹 TX Chart
+let txChart;
+async function loadTxChart() {
+  const res = await fetch(`${PI_HORIZON}/ledgers?order=desc&limit=10`);
+  const data = await res.json();
+  const records = data._embedded.records.reverse();
+
+  const labels = records.map(l => l.sequence);
+  const values = records.map(l => l.successful_transaction_count);
+
+  if (!txChart) {
+    const ctx = document.getElementById("txChart").getContext("2d");
+    txChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "TX per Ledger",
+          data: values,
+          borderWidth: 2
+        }]
+      },
+      options: { responsive: true }
+    });
+  } else {
+    txChart.data.labels = labels;
+    txChart.data.datasets[0].data = values;
+    txChart.update();
+  }
+}
+
+// 🔹 Asset List
+async function loadAssets() {
+  const res = await fetch(`${PI_HORIZON}/assets?limit=20`);
+  const data = await res.json();
+
+  const rows = data._embedded.records.map(a => `
+    <tr>
+      <td>${a.asset_code}</td>
+      <td>${a.asset_issuer.slice(0,6)}...</td>
+      <td>${a.num_accounts}</td>
+    </tr>
+  `).join("");
+
+  document.getElementById("assetTable").innerHTML = rows;
+}
+
+// Init
+loadNetworkStatus();
+loadTxChart();
+loadAssets();
+setInterval(loadNetworkStatus, 15000);
+setInterval(loadTxChart, 20000);
+</script>
+
 </body>
 </html>
