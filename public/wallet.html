@@ -2,182 +2,154 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pi Wallet Tracker – Realtime</title>
+<title>PI NETWORK — SINGULARITY MODE ∞</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://unpkg.com/three@0.152.2/build/three.min.js"></script>
 <style>
-  body { font-family: system-ui, Arial, sans-serif; background:#0b1020; color:#e5e7eb; margin:0; }
-  header { padding:20px; background:#020617; border-bottom:1px solid #1e293b; }
-  h1 { margin:0 0 6px 0; font-size:24px; }
-  .sub { font-size:13px; color:#9ca3af; }
-  .badge-net { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:bold; }
-  .testnet { background:#1e40af; }
-  .mainnet { background:#065f46; }
-  .testnet3 { background:#b45309; }
-
-  .container { padding:20px; max-width:1200px; margin:auto; }
-  .box { background:#020617; border:1px solid #1e293b; border-radius:10px; padding:12px; margin-bottom:14px; }
-  .mono { font-family:monospace; font-size:13px; }
-  table { width:100%; border-collapse:collapse; margin-top:8px; }
-  th, td { border:1px solid #1e293b; padding:6px 8px; font-size:13px; }
-  th { background:#020617; position:sticky; top:0; }
-  tr:nth-child(even){ background:#020617; }
-  .footer { padding:12px; text-align:center; font-size:12px; color:#9ca3af; }
-  input, button, select {
-    background:#020617; color:#e5e7eb; border:1px solid #1e293b;
-    padding:6px 10px; border-radius:6px;
-  }
-  button:hover { opacity:.9; cursor:pointer; }
-  a { color:#93c5fd; text-decoration:none; }
+:root{--bg:#000;--fg:#00ff9c;--panel:#020617;--warn:#ff3b3b}
+.light{--bg:#f5f5f5;--fg:#063;--panel:#fff;--warn:#b00}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:monospace}
+#top{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid var(--fg)}
+button,input{background:transparent;color:var(--fg);border:1px solid var(--fg);padding:4px 6px}
+#wall{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;gap:6px;height:calc(100vh - 42px);padding:6px}
+.box{border:1px solid var(--fg);padding:6px;background:var(--panel);overflow:hidden}
+h1{margin:0 0 6px 0;font-size:15px;color:#ffd700}
+#tx,#ai,#stats{font-size:12px;overflow:auto;height:100%}
+.badge{padding:2px 6px;border:1px solid var(--fg);margin-left:6px}
+.warn{color:var(--warn)}
+.glow{box-shadow:0 0 18px var(--fg) inset}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>
-    Pi Wallet Tracker Realtime
-    <span id="netBadge" class="badge-net"></span>
-  </h1>
-  <div class="sub" id="subtitle"></div>
-</header>
-
-<div class="container">
-  <div class="box">
-    <select id="networkSelect">
-      <option value="testnet">Testnet</option>
-      <option value="testnet3">Testnet3</option>
-      <option value="mainnet">Mainnet</option>
-    </select>
-    <input id="addrInput" class="mono" style="width:55%" placeholder="Paste Pi / Stellar Address (G...)" />
-    <button onclick="go()">Track</button>
+<div id="top">
+  <div>🌀 PI NETWORK — SINGULARITY MODE ∞</div>
+  <div>
+    <input id="wallets" placeholder="G... , G... , G..." size="38">
+    <span class="badge" id="netLabel">TESTNET</span>
+    <button onclick="setNet('testnet')">TESTNET</button>
+    <button onclick="setNet('mainnet')">MAINNET</button>
+    <button onclick="toggleTheme()">🌗</button>
   </div>
-
-  <div class="box" id="walletBox"></div>
-  <div class="box" id="txBox"></div>
-  <div class="box" id="ledgerBox"></div>
-  <div class="box" id="networkBox"></div>
 </div>
 
-<div class="footer">
-  crumbs.host – independent Pi Network explorer. Not affiliated with Pi Core Team.
+<div id="wall">
+  <div class="box glow"><h1>🌍 3D EARTH + HEAT DENSITY</h1><div id="globe" style="height:100%"></div></div>
+  <div class="box"><h1>🔁 LIVE TRANSACTIONS</h1><div id="tx"></div></div>
+  <div class="box"><h1>📊 NETWORK STATUS</h1><div id="stats"></div></div>
+  <div class="box"><h1>🧠 AI — ANOMALY & CLUSTER</h1><div id="ai"></div></div>
 </div>
 
 <script>
-let refreshInterval;
-const params = new URLSearchParams(window.location.search);
-let network = params.get("net") || "testnet";
-let address = params.get("addr") || "";
+let NET="testnet";
+const txBox=document.getElementById("tx");
+const aiBox=document.getElementById("ai");
+const statsBox=document.getElementById("stats");
+const netLabel=document.getElementById("netLabel");
 
-document.getElementById("networkSelect").value = network;
-updateNetworkBadge();
+function api(){
+ return NET==="mainnet"
+ ? "https://api.mainnet.minepi.com"
+ : "https://api.testnet.minepi.com";
+}
+function setNet(n){
+ NET=n;
+ netLabel.textContent=n.toUpperCase();
+ loadAll();
+}
+function toggleTheme(){document.body.classList.toggle("light");}
 
-if (address) {
-  document.getElementById("addrInput").value = address;
-  loadAll(address);
+/* === MULTI WALLET === */
+function getWallets(){
+ return document.getElementById("wallets").value
+   .split(",").map(w=>w.trim()).filter(w=>w.startsWith("G") && w.length===56);
 }
 
-document.getElementById("networkSelect").addEventListener("change", () => {
-  network = document.getElementById("networkSelect").value;
-  updateNetworkBadge();
-  if (document.getElementById("addrInput").value) go();
-});
+/* === LIVE TX + AI (heuristic) === */
+function loadTX(){
+ fetch(api()+"/transactions?order=desc&limit=30")
+ .then(r=>r.json())
+ .then(d=>{
+  let anomaly=false, cluster=false, bigOps=0;
+  let bySource={};
 
-function updateNetworkBadge() {
-  const badge = document.getElementById("netBadge");
-  badge.innerText = network.toUpperCase();
-  badge.className = "badge-net " + network;
-  document.getElementById("subtitle").innerText =
-    network === "mainnet" ? "Data from Pi Mainnet Horizon API"
-    : network === "testnet3" ? "Data from Pi Testnet3 Horizon API"
-    : "Data from Pi Testnet Horizon API";
+  txBox.innerHTML=d._embedded.records.map(t=>{
+    bySource[t.source_account]=(bySource[t.source_account]||0)+1;
+    if(t.operation_count>40){ anomaly=true; bigOps++; }
+    return `TX ${t.source_account.slice(0,6)}… → L${t.ledger} (${t.operation_count} ops) @ ${new Date(t.created_at).toLocaleTimeString()}<br/>`;
+  }).join("");
+
+  Object.values(bySource).forEach(v=>{ if(v>=5) cluster=true; });
+
+  aiBox.innerHTML =
+   (anomaly?`<span class="warn">⚠️ High-Ops Anomaly (${bigOps})</span><br/>`:"Normal ops<br/>") +
+   (cluster?`<span class="warn">⚠️ Clustered TX Source</span>`:"No cluster");
+
+ });
 }
 
-function go() {
-  const a = document.getElementById("addrInput").value.trim();
-  if (!a.startsWith("G") || a.length !== 56) {
-    alert("Alamat tidak valid. Harus diawali G dan 56 karakter.");
-    return;
-  }
-  address = a;
-  window.history.replaceState(null, null, `?net=${network}&addr=${address}`);
-  if (refreshInterval) clearInterval(refreshInterval);
-  loadAll(address);
-  refreshInterval = setInterval(() => loadAll(address), 3000); // refresh tiap 3 detik
+/* === NETWORK STATS === */
+function loadStats(){
+ fetch(api()+"/ledgers?order=desc&limit=1")
+ .then(r=>r.json())
+ .then(l=>{
+  const d=l._embedded.records[0];
+  statsBox.innerHTML=
+   `Network: ${NET.toUpperCase()}<br/>
+    Ledger: ${d.sequence}<br/>
+    Ops: ${d.operation_count}<br/>
+    Closed: ${new Date(d.closed_at).toLocaleTimeString()}<br/>
+    Status: ONLINE ⚡`;
+ });
 }
 
-function getApiUrl() {
-  switch(network){
-    case "mainnet": return "https://api.mainnet.minepi.com";
-    case "testnet3": return "https://testnet3.minepi.com";
-    default: return "https://api.testnet.minepi.com";
-  }
+function loadAll(){loadTX();loadStats();}
+setInterval(loadAll,1800);
+loadAll();
+
+/* ==== 3D EARTH + HEAT DENSITY ==== */
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(75,1,0.1,1000);
+const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true});
+renderer.setSize(360,360);
+document.getElementById("globe").appendChild(renderer.domElement);
+
+// Earth sphere
+const earthGeo=new THREE.SphereGeometry(2,48,48);
+const earthMat=new THREE.MeshBasicMaterial({wireframe:true,color:0x00ff9c});
+const earth=new THREE.Mesh(earthGeo,earthMat);
+scene.add(earth);
+
+// Heat points
+const heatGroup=new THREE.Group();
+scene.add(heatGroup);
+
+function addHeat(){
+ const dotGeo=new THREE.SphereGeometry(0.035,8,8);
+ const dotMat=new THREE.MeshBasicMaterial({color:0x00ff9c});
+ const dot=new THREE.Mesh(dotGeo,dotMat);
+ const u=Math.random(), v=Math.random();
+ const theta=2*Math.PI*u, phi=Math.acos(2*v-1);
+ const r=2.02;
+ dot.position.set(
+   r*Math.sin(phi)*Math.cos(theta),
+   r*Math.cos(phi),
+   r*Math.sin(phi)*Math.sin(theta)
+ );
+ heatGroup.add(dot);
+ if(heatGroup.children.length>240) heatGroup.remove(heatGroup.children[0]);
 }
+setInterval(addHeat,80);
 
-// === Load Wallet, Transactions, Ledger, Network Stats ===
-function loadAll(addr){
-  const API = getApiUrl();
-
-  // --- Wallet ---
-  fetch(`${API}/accounts/${addr}`)
-    .then(r=>r.json())
-    .then(acc=>{
-      document.getElementById("walletBox").innerHTML = `
-        <b>Wallet</b><br/>
-        <span class="mono">${addr}</span><br/><br/>
-        Sequence: ${acc.sequence}<br/>
-        Subentries: ${acc.subentry_count}<br/>
-        Balances:<br/>
-        <ul>${acc.balances.map(b=>`<li>${b.balance} ${b.asset_code||"PI"}</li>`).join("")}</ul>
-      `;
-    }).catch(()=>{ document.getElementById("walletBox").innerText="Wallet not found / API error."; });
-
-  // --- Transactions ---
-  fetch(`${API}/accounts/${addr}/transactions?order=desc&limit=10`)
-    .then(r=>r.json())
-    .then(tx=>{
-      const rows = tx._embedded.records.map(t=>`
-        <tr>
-          <td class="mono">${t.hash}</td>
-          <td>${t.ledger}</td>
-          <td>${new Date(t.created_at).toLocaleString()}</td>
-        </tr>`).join("");
-      document.getElementById("txBox").innerHTML = `
-        <b>Latest Transactions</b>
-        <table>
-          <thead><tr><th>Hash</th><th>Ledger</th><th>Time</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-    }).catch(()=>{ document.getElementById("txBox").innerText="No transactions / API error"; });
-
-  // --- Latest Ledger ---
-  fetch(`${API}/ledgers?order=desc&limit=1`)
-    .then(r=>r.json())
-    .then(ledgers=>{
-      const l = ledgers._embedded.records[0];
-      document.getElementById("ledgerBox").innerHTML = `
-        <b>Latest Ledger</b><br/>
-        Ledger: ${l.sequence}<br/>
-        Closed at: ${new Date(l.closed_at).toLocaleString()}<br/>
-        Total operations: ${l.operation_count}
-      `;
-    }).catch(()=>{ document.getElementById("ledgerBox").innerText="Ledger data not available"; });
-
-  // --- Network Stats ---
-  fetch(`${API}/network`) // asumsi endpoint tersedia
-    .then(r=>r.json())
-    .then(net=>{
-      document.getElementById("networkBox").innerHTML = `
-        <b>Network Metrics</b><br/>
-        Total Migrated Mining Rewards: ${net.total_migrated_rewards} PI<br/>
-        Locked Rewards: ${net.locked_rewards} PI<br/>
-        Unlocked Rewards: ${net.unlocked_rewards} PI<br/>
-        Circulating Supply: ${net.circulating_supply} PI<br/>
-        Max Supply: ${net.max_supply} PI
-      `;
-    }).catch(()=>{ document.getElementById("networkBox").innerText="Network metrics not available"; });
+camera.position.z=5;
+function animate(){
+ requestAnimationFrame(animate);
+ earth.rotation.y+=0.0025;
+ heatGroup.rotation.y+=0.0025;
+ renderer.render(scene,camera);
 }
-
-// Auto-start refresh jika ada address
-if(address) refreshInterval = setInterval(() => loadAll(address), 3000);
+animate();
 </script>
 
 </body>
