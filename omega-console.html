@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>🧠 OMEGA INTELLIGENCE — Pi Network</title>
+<style>
+body{margin:0;background:#000;color:#0ff;font-family:monospace}
+#ui{padding:20px}
+.panel{border:1px solid #0ff;padding:10px;margin:10px;background:rgba(0,0,0,.7)}
+#log{height:260px;overflow:auto;font-size:12px}
+input,button{background:black;color:#0ff;border:1px solid #0ff;padding:6px}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div class="panel">🧠 OMEGA INTELLIGENCE MODE</div>
+
+  <div class="panel">
+    Network:
+    <select id="net">
+      <option value="testnet">Testnet</option>
+      <option value="mainnet">Mainnet</option>
+    </select>
+  </div>
+
+  <div class="panel">
+    Wallet Radar:
+    <input id="wallets" placeholder="G...,G...,G..." style="width:260px">
+    <button onclick="scan()">Scan</button>
+  </div>
+
+  <div class="panel">Threat: <span id="threat">LOW</span></div>
+  <div class="panel">Realtime Stream<div id="log"></div></div>
+</div>
+
+<script>
+const log=document.getElementById("log");
+const threat=document.getElementById("threat");
+const es=new EventSource("http://localhost:7000/stream");
+
+es.onmessage=e=>{
+  const d=JSON.parse(e.data);
+  const row=document.createElement("div");
+  row.textContent=`Ledger ${d.ledger} | Ops ${d.ops} | ${d.anomaly?"⚠️ ANOMALY":""}`;
+  log.prepend(row);
+  if(d.anomaly){
+    threat.textContent="HIGH";
+    threat.style.color="red";
+    new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg").play();
+  }else{
+    threat.textContent="LOW";
+    threat.style.color="#0f0";
+  }
+};
+
+function scan(){
+  log.prepend(Object.assign(document.createElement("div"),{
+    textContent:"🛰️ Radar scanning: "+wallets.value
+  }));
+}
+</script>
+</body>
+</html>
